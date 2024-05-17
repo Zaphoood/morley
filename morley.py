@@ -61,9 +61,9 @@ class Node:
 class Triangle:
     def __init__(self) -> None:
         self.nodes = [
-            Node(100, 100),
-            Node(200, 200),
-            Node(200, 100),
+            Node(300, 100),
+            Node(700, 400),
+            Node(100, 400),
         ]
 
     def handle_event(self, event: pygame.event.Event) -> None:
