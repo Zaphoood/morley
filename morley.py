@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
-from math import atan2, cos, pi, sin, tan
+from math import atan2, pi, tan
 from typing import List, Optional, Tuple, TypeVar, cast
 
 import pygame
@@ -30,16 +30,39 @@ class Point:
     x: int
     y: int
 
+    def to_tuple(self) -> Tuple[int, int]:
+        return self.x, self.y
+
+    @classmethod
+    def from_tuple(cls, t: Tuple[int, int]) -> "Point":
+        return cls(t[0], t[1])
+
+    def __add__(self, other: "Point") -> "Point":
+        return Point(self.x + other.x, self.y + other.y)
+
+    def __neg__(self) -> "Point":
+        return Point(-self.x, -self.y)
+
+    def __sub__(self, other: "Point") -> "Point":
+        return self + (-other)
+
 
 class Node:
     def __init__(self, x: int, y: int, size: int = NODE_SIZE) -> None:
-        self.x = x
-        self.y = y
+        self.top_left = Point(x, y)
         self.size = size
-        self.grab_offset: None | Tuple[int, int] = None
+        self.grab_offset: None | Point = None
 
     def get_rect(self) -> pygame.Rect:
         return pygame.Rect([self.x, self.y, self.size, self.size])
+
+    @property
+    def x(self) -> int:
+        return self.top_left.x
+
+    @property
+    def y(self) -> int:
+        return self.top_left.y
 
     @property
     def center(self) -> Point:
@@ -51,7 +74,7 @@ class Node:
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.get_rect().collidepoint(event.pos):
-                self.grab_offset = (event.pos[0] - self.x, event.pos[1] - self.y)
+                self.grab_offset = Point.from_tuple(event.pos) - self.top_left
                 return True
 
         elif event.type == pygame.MOUSEBUTTONUP:
@@ -63,8 +86,7 @@ class Node:
     def update(self) -> None:
         if self.grab_offset is not None:
             mouse_pos = pygame.mouse.get_pos()
-            self.x = mouse_pos[0] - self.grab_offset[0]
-            self.y = mouse_pos[1] - self.grab_offset[1]
+            self.top_left = Point.from_tuple(mouse_pos) - self.grab_offset
 
     def draw(self, screen: pygame.Surface) -> None:
         pygame.draw.rect(
@@ -127,56 +149,53 @@ class Triangle:
             twothirds = (1 / 3) * angle_left + (2 / 3) * angle_right
             thirds.append([onethird, twothirds])
 
-        intersections_maybe: List[Tuple[int, int] | None] = []
+        intersections_maybe: List[Point | None] = []
         for i in range(len(self.nodes)):
             next_i = (i + 1) % 3
             this_node = self.nodes[i]
             next_node = self.nodes[next_i]
             inter = get_intersection(
-                (this_node.center.x, this_node.center.y),
+                this_node.center,
                 thirds[i][1],
-                (next_node.center.x, next_node.center.y),
+                next_node.center,
                 thirds[next_i][0],
             )
             intersections_maybe.append(inter)
 
         if all(point is not None for point in intersections_maybe):
-            intersections = cast(List[Tuple[int, int]], intersections_maybe)
+            intersections = cast(List[Point], intersections_maybe)
 
-            pygame.draw.polygon(screen, YELLOW, intersections)
-            pygame.draw.polygon(screen, BLACK, intersections, 1)
+            pygame.draw.polygon(
+                screen, YELLOW, [inter.to_tuple() for inter in intersections]
+            )
+            pygame.draw.polygon(
+                screen, BLACK, [inter.to_tuple() for inter in intersections], 1
+            )
 
             for outer1, inner, outer2 in zip(
                 self.nodes, intersections, rotate(self.nodes)
             ):
                 points = [
-                    (outer1.center.x, outer1.center.y),
-                    inner,
-                    (outer2.center.x, outer2.center.y),
+                    outer1.center.to_tuple(),
+                    inner.to_tuple(),
+                    outer2.center.to_tuple(),
                 ]
                 pygame.draw.polygon(screen, RED, points)
                 pygame.draw.polygon(screen, BLACK, points, 1)
 
 
-def get_polar(base: Tuple[int, int], angle: float, length: float):
-    return (base[0] + cos(angle) * length, base[1] + sin(angle) * length)
-
-
 def get_intersection(
-    base1: Tuple[int, int], angle1: float, base2: Tuple[int, int], angle2: float
-) -> Optional[Tuple[int, int]]:
+    p1: Point, angle1: float, p2: Point, angle2: float
+) -> Optional[Point]:
     if angle1 == angle2:
         return None
 
     tan1 = tan(angle1)
     tan2 = tan(angle2)
 
-    (x1, y1) = base1
-    (x2, y2) = base2
+    x = (p1.y - p2.y + p2.x * tan2 - p1.x * tan1) / (tan2 - tan1)
 
-    x = (y1 - y2 + x2 * tan2 - x1 * tan1) / (tan2 - tan1)
-
-    return int(x), int(y1 + tan1 * (x - x1))
+    return Point(int(x), int(p1.y + tan1 * (x - p1.x)))
 
 
 class App:
