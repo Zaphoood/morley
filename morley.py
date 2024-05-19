@@ -11,6 +11,7 @@ RED = [255, 0, 0]
 BLACK = [0, 0, 0]
 
 NODE_SIZE = 16
+NODE_HITBOX = 32
 
 
 T = TypeVar("T")
@@ -48,13 +49,26 @@ class Point:
 
 
 class Node:
-    def __init__(self, x: int, y: int, size: int = NODE_SIZE) -> None:
+    def __init__(
+        self, x: int, y: int, size: int = NODE_SIZE, hitbox_size: int = NODE_HITBOX
+    ) -> None:
         self.top_left = Point(x, y)
         self.size = size
+        self.hitbox_size = hitbox_size
         self.grab_offset: None | Point = None
 
     def get_rect(self) -> pygame.Rect:
         return pygame.Rect([self.x, self.y, self.size, self.size])
+
+    def get_hitbox(self) -> pygame.Rect:
+        return pygame.Rect(
+            [
+                int(self.x - 1 / 4 * self.hitbox_size),
+                int(self.y - 1 / 4 * self.hitbox_size),
+                self.hitbox_size,
+                self.hitbox_size,
+            ]
+        )
 
     @property
     def x(self) -> int:
@@ -73,7 +87,7 @@ class Node:
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.get_rect().collidepoint(event.pos):
+            if self.get_hitbox().collidepoint(event.pos):
                 self.grab_offset = Point.from_tuple(event.pos) - self.top_left
                 return True
 
