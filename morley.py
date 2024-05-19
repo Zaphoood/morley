@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from dataclasses import dataclass
 from math import atan2, cos, pi, sin, tan
 from typing import List, Optional, Tuple, TypeVar, cast
 
@@ -24,6 +25,12 @@ def rotate(a: List[T], n: int = 1) -> List[T]:
     return [*a[m:], *a[:m]]
 
 
+@dataclass
+class Point:
+    x: int
+    y: int
+
+
 class Node:
     def __init__(self, x: int, y: int, size: int = NODE_SIZE) -> None:
         self.x = x
@@ -33,6 +40,13 @@ class Node:
 
     def get_rect(self) -> pygame.Rect:
         return pygame.Rect([self.x, self.y, self.size, self.size])
+
+    @property
+    def center(self) -> Point:
+        return Point(
+            int(self.x + self.size / 2),
+            int(self.y + self.size / 2),
+        )
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -78,7 +92,12 @@ class Triangle:
 
     def draw(self, screen: pygame.Surface) -> None:
         for node1, node2 in zip(self.nodes, rotate(self.nodes)):
-            pygame.draw.line(screen, BLACK, (node1.x, node1.y), (node2.x, node2.y))
+            pygame.draw.line(
+                screen,
+                BLACK,
+                (node1.center.x, node1.center.y),
+                (node2.center.x, node2.center.y),
+            )
 
         self.draw_trisectors(screen)
 
@@ -90,8 +109,12 @@ class Triangle:
         for i, node in enumerate(self.nodes):
             left = self.nodes[(i - 1) % len(self.nodes)]
             right = self.nodes[(i + 1) % len(self.nodes)]
-            angle_left = atan2(left.y - node.y, left.x - node.x)
-            angle_right = atan2(right.y - node.y, right.x - node.x)
+            angle_left = atan2(
+                left.center.y - node.center.y, left.center.x - node.center.x
+            )
+            angle_right = atan2(
+                right.center.y - node.center.y, right.center.x - node.center.x
+            )
 
             # Fix interpolated angle pointing outwards by adding full rotation to negative angle
             if angle_left * angle_right < 0 and abs(angle_left) + abs(angle_right) > pi:
@@ -110,9 +133,9 @@ class Triangle:
             this_node = self.nodes[i]
             next_node = self.nodes[next_i]
             inter = get_intersection(
-                (this_node.x, this_node.y),
+                (this_node.center.x, this_node.center.y),
                 thirds[i][1],
-                (next_node.x, next_node.y),
+                (next_node.center.x, next_node.center.y),
                 thirds[next_i][0],
             )
             intersections_maybe.append(inter)
@@ -127,9 +150,9 @@ class Triangle:
                 self.nodes, intersections, rotate(self.nodes)
             ):
                 points = [
-                    (outer1.x, outer1.y),
+                    (outer1.center.x, outer1.center.y),
                     inner,
-                    (outer2.x, outer2.y),
+                    (outer2.center.x, outer2.center.y),
                 ]
                 pygame.draw.polygon(screen, RED, points)
                 pygame.draw.polygon(screen, BLACK, points, 1)
