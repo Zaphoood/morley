@@ -86,6 +86,10 @@ class Node:
         )
 
     def handle_event(self, event: pygame.event.Event) -> bool:
+        """Handle a pygame Event.
+
+        Return true if the event was 'consumed', in which case it shouldn't be handled by any other Node.
+        """
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.get_hitbox().collidepoint(event.pos):
                 self.grab_offset = Point.from_tuple(event.pos) - self.top_left
