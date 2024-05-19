@@ -201,6 +201,11 @@ class Triangle:
 def get_intersection(
     p1: Point, angle1: float, p2: Point, angle2: float
 ) -> Optional[Point]:
+    """Calculate the intersection of the lines drawn from Point p1 and p2 at
+    angle1 and angle2, respectively, relative to the horizon.
+
+    If the two lines are parallel, return None.
+    """
     if angle1 == angle2:
         return None
 
